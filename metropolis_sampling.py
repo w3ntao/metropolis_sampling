@@ -20,7 +20,7 @@ for direction in ["left", "right", "bottom", "top"]:
     ax.axis[direction].set_visible(False)
 
 
-def rand_float():
+def rand_zero_to_one():
     return random.uniform(0.0, 1.0)
 
 
@@ -30,9 +30,9 @@ def metropolis_samples():
         return x
 
     def mutate(x):
-        return rand_float()
+        return rand_zero_to_one()
 
-    BUCKET_SIZE = 10
+    BUCKET_SIZE = 50
     GAP = 1.0 / BUCKET_SIZE
 
     buckets = {}
@@ -44,27 +44,42 @@ def metropolis_samples():
         buckets[idx].append(f_x)
 
     # to start markov chain
-    '''
-    # TODO: implement me
-    markov_start_x_candidates = []
-    for _ in range(10):
-        x = rand_float()
-        markov_start_x_candidates.append(x, f(x) / 1.0)
+    # TODO: bug here?
+    # construct CDF:
+    # https://pbr-book.org/3ed-2018/Monte_Carlo_Integration/Sampling_Random_Variables#TheInversionMethod
 
-    sorted(markov_start_x_candidates,)
-    '''
+    markov_start_candidates = []
+    cdf = []
+    # random sample 10000 candidates
+    for _ in range(10000):
+        x = rand_zero_to_one()
+        weight = f(x) / 1.0
+        markov_start_candidates.append((x, weight))
+        cdf.append(weight)
+
+    random_prob = rand_zero_to_one() * sum(cdf)
+    candidate_id = len(cdf) - 1
+
+    # inverse CDF
+    for idx in range(len(cdf)):
+        if random_prob <= cdf[idx]:
+            candidate_id = idx
+            break
+        random_prob -= cdf[idx]
+
+    markov_x0, _ = markov_start_candidates[candidate_id]
+    global_weight = np.average(
+        list(map(lambda x: x[1], markov_start_candidates)))
+
+    print("markov_x0: {:.2f} -- weight: {:.3f}\n".format(
+        markov_x0, global_weight))
+
+    #exit(0)
 
     # end of start-up
 
-    x0 = rand_float()
-    f_x0 = f(x0)
-    global_weight = f_x0
-    print("x0: {:.2f} -- weight: {:.3f}\n".format(x0, global_weight))
-
-    put_into_buckets(x0, f_x0 / global_weight)
-
-    x = x0
-    for _ in range(1000):
+    x = markov_x0
+    for _ in range(100000):
         x_prime = mutate(x)
         f_x = f(x)
         f_x_prime = f(x_prime)
@@ -73,7 +88,7 @@ def metropolis_samples():
         put_into_buckets(x, f_x * (1.0 - prob_accept) / global_weight)
         put_into_buckets(x_prime, f_x_prime * prob_accept / global_weight)
 
-        if rand_float() < prob_accept:
+        if rand_zero_to_one() < prob_accept:
             x = x_prime
 
     x_series = []
@@ -81,15 +96,15 @@ def metropolis_samples():
     for idx in range(BUCKET_SIZE):
         if len(buckets[idx]) == 0:
             continue
-        #x_series.append((idx + 0.5) * GAP)
 
-        x = idx * GAP
+        x = (idx + 0.5) * GAP
         y = np.average(buckets[idx])
 
         x_series.append(x)
         y_series.append(y)
 
-        print("{:.2f} -> {:.3f}".format(x, y))
+        if idx == BUCKET_SIZE - 1:
+            print("{:.2f} -> {:.3f}".format(x, y))
 
     return x_series, y_series
 
@@ -102,7 +117,7 @@ ax.plot(x_series, y_series)
 file_name = "metropolis_samples.png"
 
 plt.savefig(file_name)
-print("\nimage saved to `{}`".format(file_name))
+print("image saved to `{}`".format(file_name))
 
 exit(0)
 
