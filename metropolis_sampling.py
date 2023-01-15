@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 
+BUCKET_SIZE = 50
+GAP = 1.0 / BUCKET_SIZE
+
 fig = plt.figure()
 ax = fig.add_subplot(axes_class=AxesZero)
 
@@ -31,13 +34,10 @@ def black_box_function(x):
 black_box_function.formula = "x"
 
 
-def metropolis_samples():
+def metropolis_samples(num_samples):
 
     def mutate(x):
         return rand_zero_to_one()
-
-    BUCKET_SIZE = 50
-    GAP = 1.0 / BUCKET_SIZE
 
     buckets = {}
     for idx in range(BUCKET_SIZE):
@@ -76,12 +76,10 @@ def metropolis_samples():
     print("markov_x0: {:.2f} -- weight: {:.3f}\n".format(
         markov_x0, global_weight))
 
-    #exit(0)
-
     # end of start-up
 
     x = markov_x0
-    for _ in range(100000):
+    for _ in range(num_samples):
         x_prime = mutate(x)
         f_x = black_box_function(x)
         f_x_prime = black_box_function(x_prime)
@@ -92,6 +90,12 @@ def metropolis_samples():
 
         if rand_zero_to_one() < prob_accept:
             x = x_prime
+
+    return buckets
+
+
+if __name__ == "__main__":
+    buckets = metropolis_samples(100000)
 
     x_series = []
     y_series = []
@@ -113,23 +117,18 @@ def metropolis_samples():
                                                        (idx + 0.5) * GAP,
                                                        len(buckets[idx])))
 
-    return x_series, y_series
+    ax.plot(x_series, y_series, label="metropolis sampling")
+    #ax.set_aspect('equal', adjustable='box')
 
+    t = np.arange(0., 1., 0.01)
+    ax.plot(t,
+            black_box_function(t),
+            'r--',
+            label="y = {}".format(black_box_function.formula))
 
-x_series, y_series = metropolis_samples()
+    fig.legend(labelcolor="linecolor")
 
-ax.plot(x_series, y_series, label="metropolis sampling")
-#ax.set_aspect('equal', adjustable='box')
+    file_name = "metropolis_samples.png"
 
-t = np.arange(0., 1., 0.01)
-ax.plot(t,
-        black_box_function(t),
-        'r--',
-        label="y = {}".format(black_box_function.formula))
-
-fig.legend(labelcolor="linecolor")
-
-file_name = "metropolis_samples.png"
-
-plt.savefig(file_name, dpi=160)
-print("image saved to `{}`".format(file_name))
+    plt.savefig(file_name, dpi=160)
+    print("image saved to `{}`".format(file_name))
