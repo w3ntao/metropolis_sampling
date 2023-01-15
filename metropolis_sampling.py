@@ -1,4 +1,4 @@
-# taken from
+# borrow from
 # https://matplotlib.org/stable/gallery/axisartist/demo_axisline_style.html#sphx-glr-gallery-axisartist-demo-axisline-style-py
 from mpl_toolkits.axisartist.axislines import AxesZero
 import matplotlib.pyplot as plt
@@ -24,10 +24,14 @@ def rand_zero_to_one():
     return random.uniform(0.0, 1.0)
 
 
-def metropolis_samples():
+def black_box_function(x):
+    return x
 
-    def f(x):
-        return x
+
+black_box_function.formula = "x"
+
+
+def metropolis_samples():
 
     def mutate(x):
         return rand_zero_to_one()
@@ -44,8 +48,6 @@ def metropolis_samples():
         buckets[idx].append(f_x)
 
     # to start markov chain
-    # TODO: bug here?
-    # construct CDF:
     # https://pbr-book.org/3ed-2018/Monte_Carlo_Integration/Sampling_Random_Variables#TheInversionMethod
 
     markov_start_candidates = []
@@ -53,7 +55,7 @@ def metropolis_samples():
     # random sample 10000 candidates
     for _ in range(10000):
         x = rand_zero_to_one()
-        weight = f(x) / 1.0
+        weight = black_box_function(x) / 1.0
         markov_start_candidates.append((x, weight))
         cdf.append(weight)
 
@@ -81,8 +83,8 @@ def metropolis_samples():
     x = markov_x0
     for _ in range(100000):
         x_prime = mutate(x)
-        f_x = f(x)
-        f_x_prime = f(x_prime)
+        f_x = black_box_function(x)
+        f_x_prime = black_box_function(x_prime)
         prob_accept = min(1.0, f_x_prime / f_x)
 
         put_into_buckets(x, f_x * (1.0 - prob_accept) / global_weight)
@@ -116,18 +118,18 @@ def metropolis_samples():
 
 x_series, y_series = metropolis_samples()
 
-ax.plot(x_series, y_series)
+ax.plot(x_series, y_series, label="metropolis sampling")
 #ax.set_aspect('equal', adjustable='box')
+
+t = np.arange(0., 1., 0.01)
+ax.plot(t,
+        black_box_function(t),
+        'r--',
+        label="y = {}".format(black_box_function.formula))
+
+fig.legend(labelcolor="linecolor")
 
 file_name = "metropolis_samples.png"
 
-plt.savefig(file_name)
+plt.savefig(file_name, dpi=160)
 print("image saved to `{}`".format(file_name))
-
-exit(0)
-
-x_series, y_series = gt_samples()
-ax.plot(x_series, y_series)
-#ax.set_aspect('equal', adjustable='box')
-
-plt.savefig('foo.png')
