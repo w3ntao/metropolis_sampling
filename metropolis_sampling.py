@@ -106,6 +106,11 @@ def metropolis_samples():
         if idx == BUCKET_SIZE - 1:
             print("{:.2f} -> {:.3f}".format(x, y))
 
+    for idx in range(len(buckets)):
+        print("samples in [{:.3f}, {:.3f}): {}".format(idx * GAP,
+                                                       (idx + 0.5) * GAP,
+                                                       len(buckets[idx])))
+
     return x_series, y_series
 
 
