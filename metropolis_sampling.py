@@ -8,33 +8,12 @@ import random
 BUCKET_SIZE = 50
 GAP = 1.0 / BUCKET_SIZE
 
-fig = plt.figure()
-ax = fig.add_subplot(axes_class=AxesZero)
-
-for direction in ["xzero", "yzero"]:
-    # adds arrows at the ends of each axis
-    ax.axis[direction].set_axisline_style("-|>")
-
-    # adds X and Y-axis from the origin
-    ax.axis[direction].set_visible(True)
-
-for direction in ["left", "right", "bottom", "top"]:
-    # hides borders
-    ax.axis[direction].set_visible(False)
-
 
 def rand_zero_to_one():
     return random.uniform(0.0, 1.0)
 
 
-def black_box_function(x):
-    return x
-
-
-black_box_function.formula = "x"
-
-
-def metropolis_samples(num_samples):
+def metropolis_samples(sampled_function, num_samples):
 
     def mutate(x):
         return rand_zero_to_one()
@@ -55,7 +34,7 @@ def metropolis_samples(num_samples):
     # random sample 10000 candidates
     for _ in range(10000):
         x = rand_zero_to_one()
-        weight = black_box_function(x) / 1.0
+        weight = sampled_function(x) / 1.0
         markov_start_candidates.append((x, weight))
         cdf.append(weight)
 
@@ -73,11 +52,11 @@ def metropolis_samples(num_samples):
     global_weight = np.average(
         list(map(lambda x: x[1], markov_start_candidates)))
 
-    print("markov_x0: {:.2f} -- weight: {:.3f}\n".format(
-        markov_x0, global_weight))
-
+    print("markov_x0: {:.2f} -- weight: {:.3f}".format(markov_x0,
+                                                       global_weight))
     # end of start-up
 
+    # metropolis sampling:
     x = markov_x0
     for _ in range(num_samples):
         x_prime = mutate(x)
@@ -95,40 +74,55 @@ def metropolis_samples(num_samples):
 
 
 if __name__ == "__main__":
-    buckets = metropolis_samples(100000)
+    for formula, black_box_function in [
+        ("y = x", lambda x: x),
+        ("y = x^2", lambda x: x * x),
+        ("(x - 0.5)^2", lambda x: (x - 0.5)**2),
+    ]:
+        buckets = metropolis_samples(black_box_function, 100000)
 
-    x_series = []
-    y_series = []
-    for idx in range(BUCKET_SIZE):
-        if len(buckets[idx]) == 0:
-            continue
+        x_series = []
+        y_series = []
+        for idx in range(BUCKET_SIZE):
+            if len(buckets[idx]) == 0:
+                continue
+            '''
+            print("samples in [{:.3f}, {:.3f}): {}".format(
+                idx * GAP, (idx + 0.5) * GAP, len(buckets[idx])))
+            '''
 
-        x = (idx + 0.5) * GAP
-        y = np.average(buckets[idx])
+            x = (idx + 0.5) * GAP
+            y = np.average(buckets[idx])
 
-        x_series.append(x)
-        y_series.append(y)
+            x_series.append(x)
+            y_series.append(y)
 
-        if idx == BUCKET_SIZE - 1:
-            print("{:.2f} -> {:.3f}".format(x, y))
+            if idx == BUCKET_SIZE - 1:
+                print("{:.2f} -> {:.3f}".format(x, y))
 
-    for idx in range(len(buckets)):
-        print("samples in [{:.3f}, {:.3f}): {}".format(idx * GAP,
-                                                       (idx + 0.5) * GAP,
-                                                       len(buckets[idx])))
+        fig = plt.figure()
+        ax = fig.add_subplot(axes_class=AxesZero)
 
-    ax.plot(x_series, y_series, label="metropolis sampling")
-    #ax.set_aspect('equal', adjustable='box')
+        for direction in ["xzero", "yzero"]:
+            # adds arrows at the ends of each axis
+            ax.axis[direction].set_axisline_style("-|>")
 
-    t = np.arange(0., 1., 0.01)
-    ax.plot(t,
-            black_box_function(t),
-            'r--',
-            label="y = {}".format(black_box_function.formula))
+            # adds X and Y-axis from the origin
+            ax.axis[direction].set_visible(True)
 
-    fig.legend(labelcolor="linecolor")
+        for direction in ["left", "right", "bottom", "top"]:
+            # hides borders
+            ax.axis[direction].set_visible(False)
 
-    file_name = "metropolis_samples.png"
+        ax.plot(x_series, y_series, label="metropolis sampling")
+        #ax.set_aspect('equal', adjustable='box')
 
-    plt.savefig(file_name, dpi=160)
-    print("image saved to `{}`".format(file_name))
+        t = np.arange(0., 1., 0.01)
+        ax.plot(t, black_box_function(t), 'r--', label=formula)
+
+        fig.legend(labelcolor="linecolor")
+
+        file_name = "metropolis_samples_{}.png".format(formula.replace(" ", ""))
+
+        plt.savefig(file_name, dpi=160)
+        print("image saved to `{}`\n".format(file_name))
