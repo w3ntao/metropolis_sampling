@@ -3,6 +3,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import random
+import math
 
 BUCKET_SIZE = 50
 GAP = 1.0 / BUCKET_SIZE
@@ -88,8 +89,9 @@ if __name__ == "__main__":
         ("y = x", lambda x: x),
         ("y = x^2", lambda x: x * x),
         ("(x - 0.5)^2", lambda x: (x - 0.5)**2),
+        ("1.0 + 2*PI*x", lambda x: 1.0 + np.cos(x * 2 * np.pi)),
     ]:
-        buckets = metropolis_sampling(unknown_function, 10000)
+        buckets = metropolis_sampling(unknown_function, 5000)
 
         x_series = []
         y_series = []
