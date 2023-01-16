@@ -1,6 +1,5 @@
-# borrow from
-# https://matplotlib.org/stable/gallery/axisartist/demo_axisline_style.html#sphx-glr-gallery-axisartist-demo-axisline-style-py
-from mpl_toolkits.axisartist.axislines import AxesZero
+# python3 metropolis_sampling.py
+
 import matplotlib.pyplot as plt
 import numpy as np
 import random
@@ -13,18 +12,7 @@ def rand_zero_to_one():
     return random.uniform(0.0, 1.0)
 
 
-def metropolis_samples(sampled_function, num_samples):
-
-    def mutate(x):
-        return rand_zero_to_one()
-
-    buckets = {}
-    for idx in range(BUCKET_SIZE):
-        buckets[idx] = []
-
-    def put_into_buckets(x, f_x):
-        idx = int(x / GAP)
-        buckets[idx].append(f_x)
+def metropolis_sampling(black_box_function, num_samples):
 
     # to start markov chain
     # https://pbr-book.org/3ed-2018/Monte_Carlo_Integration/Sampling_Random_Variables#TheInversionMethod
@@ -34,7 +22,7 @@ def metropolis_samples(sampled_function, num_samples):
     # random sample 10000 candidates
     for _ in range(10000):
         x = rand_zero_to_one()
-        weight = sampled_function(x) / 1.0
+        weight = black_box_function(x) / 1.0
         markov_start_candidates.append((x, weight))
         cdf.append(weight)
 
@@ -54,7 +42,19 @@ def metropolis_samples(sampled_function, num_samples):
 
     print("markov_x0: {:.2f} -- weight: {:.3f}".format(markov_x0,
                                                        global_weight))
+
     # end of start-up
+
+    def mutate(x):
+        return rand_zero_to_one()
+
+    buckets = {}
+    for idx in range(BUCKET_SIZE):
+        buckets[idx] = []
+
+    def put_into_buckets(x, f_x):
+        idx = int(x / GAP)
+        buckets[idx].append(f_x)
 
     # metropolis sampling:
     x = markov_x0
@@ -74,12 +74,12 @@ def metropolis_samples(sampled_function, num_samples):
 
 
 if __name__ == "__main__":
-    for formula, black_box_function in [
+    for formula, unknown_function in [
         ("y = x", lambda x: x),
         ("y = x^2", lambda x: x * x),
         ("(x - 0.5)^2", lambda x: (x - 0.5)**2),
     ]:
-        buckets = metropolis_samples(black_box_function, 100000)
+        buckets = metropolis_sampling(unknown_function, 100000)
 
         x_series = []
         y_series = []
@@ -101,28 +101,32 @@ if __name__ == "__main__":
                 print("{:.2f} -> {:.3f}".format(x, y))
 
         fig = plt.figure()
-        ax = fig.add_subplot(axes_class=AxesZero)
+        plt.subplot(121)
 
-        for direction in ["xzero", "yzero"]:
-            # adds arrows at the ends of each axis
-            ax.axis[direction].set_axisline_style("-|>")
+        t = np.arange(0.0, 1., 0.01)
+        plt.plot(t,
+                 unknown_function(t),
+                 '--',
+                 color="royalblue",
+                 label="f: {}".format(formula))
 
-            # adds X and Y-axis from the origin
-            ax.axis[direction].set_visible(True)
+        plt.plot(x_series, y_series, color='red', label="reconstructed f")
 
-        for direction in ["left", "right", "bottom", "top"]:
-            # hides borders
-            ax.axis[direction].set_visible(False)
+        plt.subplot(122)
+        num_samples_x = []
+        num_samples_y = []
+        for idx in range(BUCKET_SIZE):
+            num_samples_x += [(idx + 0.5) * GAP]
+            num_samples_y += [len(buckets[idx])]
 
-        ax.plot(x_series, y_series, label="metropolis sampling")
-        #ax.set_aspect('equal', adjustable='box')
+        plt.plot(num_samples_x,
+                 num_samples_y,
+                 color='magenta',
+                 label="number of samples")
 
-        t = np.arange(0., 1., 0.01)
-        ax.plot(t, black_box_function(t), 'r--', label=formula)
-
-        fig.legend(labelcolor="linecolor")
+        fig.legend(labelcolor="linecolor",)
 
         file_name = "metropolis_samples_{}.png".format(formula.replace(" ", ""))
 
-        plt.savefig(file_name, dpi=160)
+        plt.savefig(file_name, dpi=160, bbox_inches="tight")
         print("image saved to `{}`\n".format(file_name))
