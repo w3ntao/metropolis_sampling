@@ -52,9 +52,11 @@ def metropolis_sampling(black_box_function, num_samples):
     for idx in range(BUCKET_SIZE):
         buckets[idx] = []
 
-    def put_into_buckets(x, f_x):
-        idx = int(x / GAP)
-        buckets[idx].append(f_x)
+    def record(x, weight, f_x):
+        if weight <= 0.0:
+            return
+
+        buckets[int(x / GAP)].append((x, weight, f_x))
 
     # metropolis sampling:
     x = markov_x0
@@ -64,8 +66,12 @@ def metropolis_sampling(black_box_function, num_samples):
         f_x_prime = black_box_function(x_prime)
         prob_accept = min(1.0, f_x_prime / f_x)
 
-        put_into_buckets(x, f_x * (1.0 - prob_accept) / global_weight)
-        put_into_buckets(x_prime, f_x_prime * prob_accept / global_weight)
+        # 13.4.1 Basic Algorithm:
+        # https://www.pbr-book.org/3ed-2018/Monte_Carlo_Integration/Metropolis_Sampling#BasicAlgorithm
+        record(x, 1.0 - prob_accept, f_x)
+        record(x_prime, prob_accept, f_x_prime)
+
+        #record(x_prime, 1.0, f_x_prime)
 
         if rand_zero_to_one() < prob_accept:
             x = x_prime
@@ -79,7 +85,7 @@ if __name__ == "__main__":
         ("y = x^2", lambda x: x * x),
         ("(x - 0.5)^2", lambda x: (x - 0.5)**2),
     ]:
-        buckets = metropolis_sampling(unknown_function, 100000)
+        buckets = metropolis_sampling(unknown_function, 1000)
 
         x_series = []
         y_series = []
@@ -91,14 +97,18 @@ if __name__ == "__main__":
                 idx * GAP, (idx + 0.5) * GAP, len(buckets[idx])))
             '''
 
-            x = (idx + 0.5) * GAP
-            y = np.average(buckets[idx])
+            total_weight = 0.0
+            total_f_x = 0.0
 
-            x_series.append(x)
-            y_series.append(y)
+            for x, weight, f_x in buckets[idx]:
+                total_weight += weight
+                total_f_x += f_x * weight
+
+            x_series.append((idx + 0.5) * GAP)
+            y_series.append(total_f_x / total_weight)
 
             if idx == BUCKET_SIZE - 1:
-                print("{:.2f} -> {:.3f}".format(x, y))
+                print("{:.2f} -> {:.3f}".format(x, total_f_x / total_weight))
 
         fig = plt.figure()
         plt.subplot(121)
@@ -117,7 +127,9 @@ if __name__ == "__main__":
         num_samples_y = []
         for idx in range(BUCKET_SIZE):
             num_samples_x += [(idx + 0.5) * GAP]
-            num_samples_y += [len(buckets[idx])]
+
+            total_weight = sum(map(lambda item: item[1], buckets[idx]))
+            num_samples_y += [total_weight]
 
         plt.plot(num_samples_x,
                  num_samples_y,
