@@ -3,7 +3,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import random
-import math
 
 BUCKET_SIZE = 50
 GAP = 1.0 / BUCKET_SIZE
@@ -57,11 +56,11 @@ def metropolis_sampling(black_box_function, num_samples):
     for idx in range(BUCKET_SIZE):
         buckets[idx] = []
 
-    def record(x, weight, f_x):
+    def record(x, f_x, weight):
         if weight <= 0.0:
             return
 
-        buckets[int(x / GAP)].append((x, weight, f_x))
+        buckets[int(x / GAP)].append((x, f_x, weight))
 
     # metropolis sampling:
     x = markov_x0
@@ -73,10 +72,8 @@ def metropolis_sampling(black_box_function, num_samples):
 
         # 13.4.1 Basic Algorithm:
         # https://www.pbr-book.org/3ed-2018/Monte_Carlo_Integration/Metropolis_Sampling#BasicAlgorithm
-        record(x, 1.0 - prob_accept, f_x)
-        record(x_prime, prob_accept, f_x_prime)
-
-        #record(x_prime, 1.0, f_x_prime)
+        record(x, f_x, 1.0 - prob_accept)
+        record(x_prime, f_x_prime, prob_accept)
 
         if rand_zero_to_one() < prob_accept:
             x = x_prime
@@ -89,12 +86,16 @@ if __name__ == "__main__":
         ("y = x", lambda x: x),
         ("y = x^2", lambda x: x * x),
         ("(x - 0.5)^2", lambda x: (x - 0.5)**2),
-        ("1.0 + 2*PI*x", lambda x: 1.0 + np.cos(x * 2 * np.pi)),
+        ("1.0 + 4*PI*x", lambda x: 1.0 + np.cos(x * 4 * np.pi)),
     ]:
         buckets = metropolis_sampling(unknown_function, 5000)
 
-        x_series = []
-        y_series = []
+        samples_x = []
+        samples_y = []
+
+        pdf_samples_x = []
+        pdf_samples_y = []
+
         for idx in range(BUCKET_SIZE):
             if len(buckets[idx]) == 0:
                 continue
@@ -102,12 +103,15 @@ if __name__ == "__main__":
             total_weight = 0.0
             total_f_x = 0.0
 
-            for x, weight, f_x in buckets[idx]:
+            for x, f_x, weight in buckets[idx]:
                 total_weight += weight
                 total_f_x += f_x * weight
 
-            x_series.append((idx + 0.5) * GAP)
-            y_series.append(total_f_x / total_weight)
+            samples_x += [(idx + 0.5) * GAP]
+            samples_y += [total_f_x / total_weight]
+
+            pdf_samples_x += [(idx + 0.5) * GAP]
+            pdf_samples_y += [total_weight]
 
         fig = plt.figure()
         plt.subplot(121)
@@ -115,28 +119,22 @@ if __name__ == "__main__":
         t = np.arange(0.0, 1., 0.01)
         plt.plot(t,
                  unknown_function(t),
-                 linestyle='--',
+                 linestyle=':',
                  color="royalblue",
                  label="f: {}".format(formula))
 
-        plt.plot(x_series,
-                 y_series,
+        plt.plot(samples_x,
+                 samples_y,
                  linestyle=":",
                  color='red',
                  label="reconstructed f")
 
         plt.subplot(122)
-        num_samples_x = []
-        num_samples_y = []
-        for idx in range(BUCKET_SIZE):
-            num_samples_x += [(idx + 0.5) * GAP]
-            total_weight = sum(map(lambda item: item[1], buckets[idx]))
-            num_samples_y += [total_weight]
 
-        plt.plot(num_samples_x,
-                 num_samples_y,
+        plt.plot(pdf_samples_x,
+                 pdf_samples_y,
                  color='magenta',
-                 label="number of samples")
+                 label="pdf of samples")
 
         fig.legend(labelcolor="linecolor",)
 
