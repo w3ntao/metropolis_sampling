@@ -26,6 +26,10 @@ def metropolis_sampling(black_box_function, num_samples):
         markov_start_candidates.append((x, weight))
         cdf.append(weight)
 
+    markov_start_candidates = sorted(markov_start_candidates,
+                                     reverse=True,
+                                     key=lambda x: x[1])
+
     random_prob = rand_zero_to_one() * sum(cdf)
     candidate_id = len(cdf) - 1
 
@@ -85,17 +89,13 @@ if __name__ == "__main__":
         ("y = x^2", lambda x: x * x),
         ("(x - 0.5)^2", lambda x: (x - 0.5)**2),
     ]:
-        buckets = metropolis_sampling(unknown_function, 1000)
+        buckets = metropolis_sampling(unknown_function, 10000)
 
         x_series = []
         y_series = []
         for idx in range(BUCKET_SIZE):
             if len(buckets[idx]) == 0:
                 continue
-            '''
-            print("samples in [{:.3f}, {:.3f}): {}".format(
-                idx * GAP, (idx + 0.5) * GAP, len(buckets[idx])))
-            '''
 
             total_weight = 0.0
             total_f_x = 0.0
@@ -107,27 +107,27 @@ if __name__ == "__main__":
             x_series.append((idx + 0.5) * GAP)
             y_series.append(total_f_x / total_weight)
 
-            if idx == BUCKET_SIZE - 1:
-                print("{:.2f} -> {:.3f}".format(x, total_f_x / total_weight))
-
         fig = plt.figure()
         plt.subplot(121)
 
         t = np.arange(0.0, 1., 0.01)
         plt.plot(t,
                  unknown_function(t),
-                 '--',
+                 linestyle='--',
                  color="royalblue",
                  label="f: {}".format(formula))
 
-        plt.plot(x_series, y_series, color='red', label="reconstructed f")
+        plt.plot(x_series,
+                 y_series,
+                 linestyle=":",
+                 color='red',
+                 label="reconstructed f")
 
         plt.subplot(122)
         num_samples_x = []
         num_samples_y = []
         for idx in range(BUCKET_SIZE):
             num_samples_x += [(idx + 0.5) * GAP]
-
             total_weight = sum(map(lambda item: item[1], buckets[idx]))
             num_samples_y += [total_weight]
 
