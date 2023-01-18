@@ -13,7 +13,6 @@ def rand_zero_to_one():
 
 
 def metropolis_sampling(black_box_function, num_samples):
-
     # to start markov chain
     # https://pbr-book.org/3ed-2018/Monte_Carlo_Integration/Sampling_Random_Variables#TheInversionMethod
 
@@ -60,7 +59,7 @@ def metropolis_sampling(black_box_function, num_samples):
         if weight <= 0.0:
             return
 
-        buckets[int(x / GAP)].append((x, f_x, weight))
+        buckets[int(x / GAP)].append((f_x, weight))
 
     # metropolis sampling:
     x = markov_x0
@@ -82,13 +81,15 @@ def metropolis_sampling(black_box_function, num_samples):
 
 
 if __name__ == "__main__":
-    for formula, unknown_function in [
+    for case_id, (formula, unknown_function) in enumerate([
         ("y = x", lambda x: x),
         ("y = x^2", lambda x: x * x),
         ("(x - 0.5)^2", lambda x: (x - 0.5)**2),
         ("1.0 + 4*PI*x", lambda x: 1.0 + np.cos(x * 4 * np.pi)),
-    ]:
-        buckets = metropolis_sampling(unknown_function, 5000)
+    ]):
+
+        num_samples = 5000
+        buckets = metropolis_sampling(unknown_function, num_samples)
 
         samples_x = []
         samples_y = []
@@ -100,18 +101,18 @@ if __name__ == "__main__":
             if len(buckets[idx]) == 0:
                 continue
 
-            total_weight = 0.0
-            total_f_x = 0.0
+            accumulated_weight = 0.0
+            accumulated_f_x = 0.0
 
-            for x, f_x, weight in buckets[idx]:
-                total_weight += weight
-                total_f_x += f_x * weight
+            for f_x, weight in buckets[idx]:
+                accumulated_weight += weight
+                accumulated_f_x += f_x * weight
 
-            samples_x += [(idx + 0.5) * GAP]
-            samples_y += [total_f_x / total_weight]
+            samples_x.append((idx + 0.5) * GAP)
+            samples_y.append(accumulated_f_x / accumulated_weight)
 
-            pdf_samples_x += [(idx + 0.5) * GAP]
-            pdf_samples_y += [total_weight]
+            pdf_samples_x.append((idx + 0.5) * GAP)
+            pdf_samples_y.append(accumulated_weight / num_samples)
 
         fig = plt.figure()
         plt.subplot(121)
@@ -138,7 +139,7 @@ if __name__ == "__main__":
 
         fig.legend(labelcolor="linecolor",)
 
-        file_name = "metropolis_samples_{}.png".format(formula.replace(" ", ""))
+        file_name = "sampling_{}.png".format(case_id)
 
         plt.savefig(file_name, dpi=160, bbox_inches="tight")
         print("image saved to `{}`\n".format(file_name))
