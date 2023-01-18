@@ -14,7 +14,7 @@ def rand_zero_to_one():
 
 def metropolis_sampling(black_box_function, num_samples):
     # to start markov chain
-    # https://pbr-book.org/3ed-2018/Monte_Carlo_Integration/Sampling_Random_Variables#TheInversionMethod
+    # https://www.pbr-book.org/3ed-2018/Monte_Carlo_Integration/Metropolis_Sampling#Start-upBias
 
     markov_start_candidates = []
     cdf = []
@@ -40,6 +40,8 @@ def metropolis_sampling(black_box_function, num_samples):
         random_prob -= cdf[idx]
 
     markov_x0, _ = markov_start_candidates[candidate_id]
+
+    # TODO: how do I use `global_weight`?
     global_weight = np.average(
         list(map(lambda x: x[1], markov_start_candidates)))
 
@@ -84,9 +86,11 @@ if __name__ == "__main__":
     for case_id, (formula, unknown_function) in enumerate([
         ("y = x", lambda x: x),
         ("y = x^2", lambda x: x * x),
-        ("(x - 0.5)^2", lambda x: (x - 0.5)**2),
-        ("1.0 + 4*PI*x", lambda x: 1.0 + np.cos(x * 4 * np.pi)),
+        ("y = (x - 0.5)^2", lambda x: (x - 0.5)**2),
+        ("y = 1.0 + sin(4*π*x)", lambda x: 1.0 + np.sin(x * 4 * np.pi)),
     ]):
+
+        print("reconstructing `{}`".format(formula))
 
         num_samples = 5000
         buckets = metropolis_sampling(unknown_function, num_samples)
